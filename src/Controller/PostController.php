@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Post;
+use App\Form\PostType;
 use App\Repository\PostRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -33,14 +34,25 @@ class PostController extends AbstractController
     public function create(Request $request)
     {
         $post = new Post();
-        $post->setTitle('This is going to be a title 2');
 
-        $em = $this->getDoctrine()->getManager();
-        $em->persist($post);
+        $formica = $this->createForm(PostType::class, $post);
+        $formica->handleRequest($request);
 
-        $em->flush();
+        $formica->getErrors();
 
-        return new Response('Post was created');
+        if($formica->isSubmitted() && $formica->isValid()) {
+            $em = $this->getDoctrine()->getManager();
+            $em->persist($post);
+            $em->flush();
+
+            return $this->redirect($this->generateUrl('post.index'));
+        }
+
+
+
+        return $this->render('post/create.html.twig', [
+            'formica' => $formica->createView(),
+        ]);
     }
 
     /**
@@ -48,11 +60,23 @@ class PostController extends AbstractController
      */
     public function show(Post $post)
     {
-
-        dump($post);die;
-
         return $this->render('post/show.html.twig', [
            'post' => $post,
         ]);
+    }
+
+    /**
+     * @Route("/delete/{id}", name="delete")
+     */
+    public function remove(Post $post)
+    {
+        $em = $this->getDoctrine()->getManager();
+
+        $em->remove($post);
+        $em->flush();
+
+        $this->addFlash('success', 'Your post was removed!');
+
+        return $this->redirect($this->generateUrl('post.index'));
     }
 }
